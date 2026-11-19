@@ -1,0 +1,91 @@
+:root {
+  color-scheme: light dark;
+  font: 16px/1.65 system-ui, "Malgun Gothic", sans-serif;
+  --rule: color-mix(in srgb, CanvasText 18%, Canvas);
+  --muted: color-mix(in srgb, CanvasText 72%, Canvas);
+}
+body {
+  margin: 0;
+  color: CanvasText;
+  background: Canvas;
+}
+main {
+  width: min(69rem, calc(100% - 2rem));
+  margin: 3rem auto;
+}
+h1 {
+  margin: 0;
+  font-size: clamp(1.65rem, 4vw, 2.2rem);
+  letter-spacing: -.045em;
+}
+p {
+  margin: .45rem 0;
+}
+#source, #notice, summary {
+  color: var(--muted);
+}
+#source {
+  overflow-wrap: anywhere;
+}
+.controls {
+  display: flex;
+  gap: .55rem;
+  flex-wrap: wrap;
+  margin: 1.25rem 0 .75rem;
+}
+button {
+  font: inherit;
+  padding: .35rem .85rem;
+  border: 1px solid var(--rule);
+  border-radius: .35rem;
+  background: ButtonFace;
+  color: ButtonText;
+}
+button:enabled {
+  cursor: pointer;
+}
+button:disabled {
+  opacity: .55;
+}
+progress {
+  width: 100%;
+  accent-color: #318078;
+}
+article {
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--rule);
+  overflow-wrap: anywhere;
+}
+article > p, details p {
+  white-space: pre-wrap;
+}
+summary {
+  width: fit-content;
+  cursor: pointer;
+}
+.options {
+  max-width: 38rem;
+}
+.options fieldset {
+  margin: 1.25rem 0;
+  padding: .75rem 1.1rem 1.1rem;
+  border: 1px solid var(--rule);
+  border-radius: .5rem;
+}
+.options label {
+  display: flex;
+  gap: .55rem;
+  align-items: center;
+  font-weight: 650;
+}
+.options fieldset p {
+  margin: .15rem 0 .95rem 1.7rem;
+  color: var(--muted);
+}
+.options fieldset p:last-child {
+  margin-bottom: 0;
+}
+.options small {
+  color: var(--muted);
+  font-weight: 400;
+}

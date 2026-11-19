@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>로컬 번역</title>
+  <link rel="stylesheet" href="result.css">
+  <script type="module" src="result.js"></script>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>로컬 번역</h1>
+      <p id="source"></p>
+    </header>
+    <div class="controls">
+      <button type="button" id="resume" hidden>다시 시작</button>
+      <button type="button" id="stop" disabled>멈춤</button>
+      <button type="button" id="copy" disabled>번역 복사</button>
+    </div>
+    <p id="status" role="status"></p>
+    <progress id="progress" value="0" max="1" aria-label="번역 진행률" hidden></progress>
+    <p id="notice" hidden></p>
+    <div id="results"></div>
+  </main>
+</body>
+</html>

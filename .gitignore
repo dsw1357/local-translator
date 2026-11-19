@@ -1,0 +1,7 @@
+/.engine/
+/extension/
+/.build.lock
+*.gguf
+*.zip
+*.log
+.env
