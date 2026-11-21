@@ -1,4 +1,5 @@
 import { translate } from "./engine.js";
+import { chunkLimit, DEFAULT_CONTEXT, DEFAULT_PAGE_LIMIT } from "./settings.js";
 import "./text.js";
 import "./hover.js";
 
@@ -14,6 +15,7 @@ const originals = new WeakMap();
 globalThis.localTranslatorHover.previewElements(originals);
 
 let chunks = [];
+let contextTokens = DEFAULT_CONTEXT;
 const translations = [];
 let controller;
 
@@ -45,7 +47,7 @@ async function run() {
       const index = translations.length;
       status.textContent = `${index + 1} / ${chunks.length} 번역 중…`;
       const original = chunks[index];
-      const translated = await translate(original, signal);
+      const translated = await translate(original, signal, { contextTokens });
       signal.throwIfAborted();
       translations.push(translated);
       appendResult(original, translated);
@@ -89,10 +91,11 @@ async function initialize() {
     return;
   }
   if (result.truncated) {
-    notice.textContent = "텍스트가 길어 처음 약 4만 자만 번역합니다.";
+    notice.textContent = `텍스트가 길어 처음 ${(result.pageLimit ?? DEFAULT_PAGE_LIMIT).toLocaleString("ko-KR")}자까지만 번역합니다.`;
     notice.hidden = false;
   }
-  chunks = globalThis.localTranslatorSentenceParts(result.text).map(part => part.text);
+  contextTokens = result.contextTokens ?? DEFAULT_CONTEXT;
+  chunks = globalThis.localTranslatorParts(result.text, chunkLimit(contextTokens)).map(part => part.text);
   progress.max = chunks.length;
   progress.hidden = false;
   await run();

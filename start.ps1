@@ -1,6 +1,7 @@
 [CmdletBinding()]
 param(
     [ValidatePattern('^Vulkan\d+$')][string]$Device,
+    [ValidateSet('8192', '16384', '32768')][int]$ContextTokens = 8192,
     [switch]$Stop
 )
 
@@ -43,12 +44,14 @@ $gpu = if ($Device) {
 if (!$gpu) { throw 'No matching Vulkan GPU was found. Install a Vulkan-capable GPU driver.' }
 
 $threads = [Math]::Max(1, [Math]::Min(8, [Environment]::ProcessorCount))
+$parallel = if ($ContextTokens -eq 8192) { 2 } else { 1 }
 Write-Host "Starting the GPU translator at 127.0.0.1:39781 on $($gpu.Id): $($gpu.Description)"
+Write-Host "Context: $ContextTokens tokens across $parallel request slot(s)."
 Write-Host 'Give the model a few seconds to load. Leave this window open while translating.'
 Write-Host 'Press Ctrl+C to stop.'
 & $server --model $model --alias plamo-3-translate-0.8b --host 127.0.0.1 --port 39781 `
     --api-key-file $keyFile --offline --no-webui --log-disable `
-    --ctx-size 8192 --parallel 2 --threads $threads --device $gpu.Id --n-gpu-layers all --fit off
+    --ctx-size $ContextTokens --parallel $parallel --no-context-shift --threads $threads --device $gpu.Id --n-gpu-layers all --fit off
 if ($LASTEXITCODE -ne 0) {
     throw "The GPU engine stopped (exit $LASTEXITCODE). Check the Vulkan driver, available GPU memory and port 39781."
 }

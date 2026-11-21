@@ -1,8 +1,8 @@
-# 로컬 번역 · Chrome 확장 프로그램
+# 로컬 번역 v1.1 · Chrome 확장 프로그램
 
 Google Chrome에서 웹페이지, 선택한 텍스트, 직접 입력한 문장을 번역합니다. 한 번 모델을 받아 두면 PFN의 **PLaMo 3 Translate 0.8B GGUF Q4_K_M**이 PC의 Vulkan GPU에서 번역을 처리합니다.
 
-[Windows x64 빌드 ZIP 다운로드](downloads/Local-Translator-v1.4.0-Windows-x64.zip?raw=true)
+[Windows x64 빌드 ZIP 다운로드](downloads/Local-Translator-v1.1-Windows-x64.zip?raw=true) · [번역 예제 페이지](https://dsw1357.github.io/local-translator/)
 
 ## 툴바에서 바로 번역
 
@@ -18,6 +18,10 @@ Google Chrome에서 웹페이지, 선택한 텍스트, 직접 입력한 문장�
 
 기본값인 **페이지 내 번역**은 링크와 HTML 구조를 유지하면서 보이는 텍스트를 바꿉니다. **원문으로 복원**을 눌러 되돌릴 수 있습니다.
 
+기본 40,000자 한도에 도달하면 진행 창에 **남은 페이지 번역**이 표시됩니다. 누르면 앞서 번역한 부분을 원문으로 되돌리고, 아직 번역하지 않은 부분을 같은 페이지에서 번역합니다. 모델이 길이 제한을 반환한 문장은 더 작은 구간으로 나누어 재시도합니다. 다음 구간에서 바뀐 번역이 없으면 직전 번역을 유지합니다.
+
+[번역 예제 페이지](https://dsw1357.github.io/local-translator/)에서 **장문 예제**를 고르고 페이지를 번역해 보세요. 기본 40,000자 설정에서는 한도에 도달하면 **남은 페이지 번역**이 나타납니다. **뒷부분으로 이동**을 눌러 이어서 번역한 문단을 확인할 수 있습니다.
+
 ![Chrome 페이지의 한글 번역 위에 원문이 뜨고, 원문으로 복원 버튼이 표시된 예](docs/images/page-translate.png)
 
 ## 새 탭에 번역 결과 모으기
@@ -28,7 +32,7 @@ Google Chrome에서 웹페이지, 선택한 텍스트, 직접 입력한 문장�
 
 ## Chrome에 설치
 
-1. Windows x64에서 [빌드 ZIP](downloads/Local-Translator-v1.4.0-Windows-x64.zip?raw=true)을 풀고 `BUILD.cmd`를 실행합니다. 공식 Vulkan 런타임과 모델을 내려받아 SHA-256을 확인하고 `extension` 폴더를 만듭니다. 첫 빌드에 약 610MB를 내려받습니다.
+1. Windows x64에서 [빌드 ZIP](downloads/Local-Translator-v1.1-Windows-x64.zip?raw=true)을 풀고 `BUILD.cmd`를 실행합니다. 공식 Vulkan 런타임과 모델을 내려받아 SHA-256을 확인하고 `extension` 폴더를 만듭니다. 첫 빌드에 약 610MB를 내려받습니다.
 2. Chrome 주소창에서 `chrome://extensions`를 엽니다. **개발자 모드**를 켜고 **압축해제된 확장 프로그램 로드**에서 생성된 `extension` 폴더를 고릅니다.
 3. `START.cmd`를 실행합니다. Chrome의 확장 프로그램 메뉴에서 **우클릭 로컬 번역**을 고정하면 툴바에서 바로 열 수 있습니다. 엔진을 종료할 때는 `STOP.cmd`를 실행합니다.
 
@@ -40,6 +44,7 @@ Chrome 매니페스트의 최소 버전은 116입니다. 최신 데스크톱 Chr
 
 - **GPU**는 Vulkan을 지원하는 Windows x64 드라이버가 필요합니다. GPU는 자동 선택되며, `START.cmd -Device Vulkan1`처럼 직접 지정할 수 있습니다.
 - **로컬 처리**에 쓰는 엔진 주소는 `127.0.0.1:39781`입니다. 모델 다운로드 후 번역할 때는 인터넷 연결이 필요하지 않습니다.
-- **페이지 번역**은 일반 웹페이지의 텍스트를 최대 약 4만 자까지 처리합니다.
+- **번역 길이**에서 한 번에 번역할 페이지 글자 수를 40,000~200,000자로 지정할 수 있습니다.
+- **모델 컨텍스트**는 기본 8,192토큰, 16,384토큰, 최대 32,768토큰 중 선택합니다. 기본 엔진은 2슬롯으로 요청당 4,096토큰을 사용하고, 확장 설정은 1슬롯을 사용합니다. 옵션에서 시작 명령을 복사한 뒤 `STOP.cmd`로 엔진을 종료하고 해당 명령으로 실행하세요. 컨텍스트에는 모델로 보낸 원문과 생성한 번역문이 모두 포함됩니다.
 
 [변경 이력](CHANGELOG.md) · [Chrome 직접 설치 안내](https://developer.chrome.com/docs/extensions/get-started/tutorial/hello-world#load-unpacked) · [PLaMo 모델 및 라이선스](https://huggingface.co/pfnet/plamo-3-translate-0.8b-GGUF) · [llama.cpp Vulkan 배포본](https://github.com/ggml-org/llama.cpp/releases/tag/b12246)

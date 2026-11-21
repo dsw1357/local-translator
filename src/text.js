@@ -34,6 +34,23 @@
       .map(({ segment, index }) => ({ text: segment, start: index, end: index + segment.length }));
   }
 
+  function translationParts(text, maxLength) {
+    const parts = sentenceParts(text, maxLength);
+    if (maxLength <= 640) return parts;
+    const paragraphs = [];
+    for (const part of parts) {
+      const prior = paragraphs.at(-1);
+      if (prior && part.end - prior.start <= maxLength &&
+          !/[\r\n]/u.test(text.slice(prior.end, part.start))) {
+        prior.end = part.end;
+        prior.text = text.slice(prior.start, prior.end);
+      } else {
+        paragraphs.push(part);
+      }
+    }
+    return paragraphs;
+  }
+
   function requestPort(name, payload, signal) {
     signal.throwIfAborted();
     return new Promise((resolve, reject) => {
@@ -52,12 +69,17 @@
       }
       signal.addEventListener("abort", abort, { once: true });
       port.onDisconnect.addListener(disconnected);
-      port.onMessage.addListener(response => finish(response.error ? new Error(response.error) : null, response));
+      port.onMessage.addListener(response => {
+        const error = response.error ? new Error(response.error) : null;
+        if (error) error.code = response.code;
+        finish(error, response);
+      });
       port.postMessage(payload);
     });
   }
 
   globalThis.localTranslatorSentenceParts = sentenceParts;
+  globalThis.localTranslatorParts = translationParts;
   globalThis.localTranslatorWords = words;
   globalThis.localTranslatorRequestPort = requestPort;
 })();

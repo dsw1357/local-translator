@@ -1,4 +1,5 @@
 import { translate } from "./engine.js";
+import { chunkLimit, getTranslationSettings } from "./settings.js";
 import { automaticTargetLanguage, detectSourceLanguage, isSupportedLanguage, languageName, languages } from "./languages.js";
 import "./hover.js";
 import "./text.js";
@@ -71,14 +72,18 @@ async function run() {
       : choice.target;
     output.lang = target;
     output.replaceChildren();
-    const parts = globalThis.localTranslatorSentenceParts(text);
+    const { contextTokens } = await getTranslationSettings();
+    signal.throwIfAborted();
+    const parts = globalThis.localTranslatorParts(text, chunkLimit(contextTokens));
     const sameLanguage = choice.source !== "auto" && input === target;
     let lastEnd = 0;
     for (const [index, part] of parts.entries()) {
       setStatus(parts.length > 1 ? `${index + 1} / ${parts.length} 번역 중…` : "번역 중…");
       const translated = sameLanguage || !/\p{L}/u.test(part.text)
         ? part.text
-        : await translate(part.text, signal, { sourceLanguage: choice.source === "auto" ? undefined : input, targetLanguage: target });
+        : await translate(part.text, signal, {
+          sourceLanguage: choice.source === "auto" ? undefined : input, targetLanguage: target, contextTokens
+        });
       signal.throwIfAborted();
       const unit = document.createElement("span");
       unit.setAttribute("data-original-unit", "");

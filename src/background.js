@@ -1,10 +1,10 @@
 import { translate } from "./engine.js";
 import { alignOriginalWord } from "./alignment.js";
+import { chunkLimit, CONTEXT_OPTIONS, DEFAULT_CONTEXT, getTranslationSettings } from "./settings.js";
 
 const SELECTION = "translate-selection";
 const PAGE = "translate-page";
 const DOCUMENTS = ["https://*/*", "http://*/*"];
-const MAX_TEXT = 40_000;
 const ACTION_TITLE = "로컬 번역 열기";
 
 chrome.runtime.onInstalled.addListener(() => {
@@ -59,8 +59,9 @@ async function startTranslation(tab, { selection, frameId = 0 } = {}) {
   await chrome.action.setBadgeText({ tabId, text: "" });
   await chrome.action.setTitle({ tabId, title: ACTION_TITLE });
   const { displayMode } = await chrome.storage.local.get({ displayMode: "page" });
+  const settings = await getTranslationSettings();
   if (displayMode === "tab") {
-    await openResultTab(tab, selection);
+    await openResultTab(tab, selection, settings);
     return;
   }
 
@@ -70,7 +71,9 @@ async function startTranslation(tab, { selection, frameId = 0 } = {}) {
       files: ["hover.js", "text.js", "page.js"]
     });
     await chrome.tabs.sendMessage(tabId, {
-      type: "translate-in-page", selection: selection !== undefined
+      type: "translate-in-page", selection: selection !== undefined,
+      pageLimit: settings.pageLimit, contextTokens: settings.contextTokens,
+      chunkLength: chunkLimit(settings.contextTokens)
     }, { documentId: frame.documentId });
   } catch {
     const error = "이 문서의 페이지 내 번역을 실행할 수 없습니다.";
@@ -92,17 +95,22 @@ chrome.runtime.onConnect.addListener(port => {
       if (isAlignment) {
         response = { alignment: await alignOriginalWord(input, controller.signal) };
       } else {
-        if (typeof input !== "string" || !input.trim() || input.length > 640) throw new Error("번역할 문장을 읽을 수 없습니다.");
-        response = { translated: await translate(input, controller.signal, { timeout: 25_000 }) };
+        const { text, contextTokens } = input ?? {};
+        if (!CONTEXT_OPTIONS.includes(contextTokens) || typeof text !== "string" ||
+            !text.trim() || text.length > chunkLimit(contextTokens)) {
+          throw new Error("번역할 문장을 읽을 수 없습니다.");
+        }
+        const timeout = contextTokens === DEFAULT_CONTEXT ? 25_000 : 180_000;
+        response = { translated: await translate(text, controller.signal, { timeout, contextTokens }) };
       }
     } catch (error) {
-      response = { error: error.message };
+      response = { error: error.message, code: error.code };
     }
     if (!controller.signal.aborted) port.postMessage(response);
   });
 });
 
-async function openResultTab(tab, selection) {
+async function openResultTab(tab, selection, { pageLimit, contextTokens }) {
   let result;
   try {
     let text = selection;
@@ -113,17 +121,19 @@ async function openResultTab(tab, selection) {
           const pageText = (document.body?.innerText ?? "").trim();
           return pageText.slice(0, limit + 1);
         },
-        args: [MAX_TEXT]
+        args: [pageLimit]
       });
       text = capture?.result ?? "";
     }
     text = text.trim();
-    const limited = text.slice(0, MAX_TEXT).replace(/[\uD800-\uDBFF]$/u, "");
+    const limited = text.slice(0, pageLimit).replace(/[\uD800-\uDBFF]$/u, "");
     result = {
       title: tab.title || "웹페이지",
       selection: selection !== undefined,
       text: limited,
-      truncated: text.length > MAX_TEXT
+      pageLimit,
+      contextTokens,
+      truncated: text.length > pageLimit
     };
   } catch {
     result = { error: "이 탭의 텍스트를 읽을 수 없습니다. 일반 웹페이지에서 실행하세요." };

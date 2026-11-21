@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Local Translator v1.1 · 번역 예제</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font: 17px/1.7 system-ui, "Malgun Gothic", sans-serif;
+      color: #232b2a;
+      background: #f3f0e9;
+      --green: #20544b;
+      --rule: #d4d7cb;
+    }
+    body { margin: 0; }
+    header, main { width: min(46rem, calc(100% - 2rem)); margin-inline: auto; }
+    header { padding: clamp(1.45rem, 5vw, 3rem) 0 1.3rem; }
+    header a, main a { font-weight: 600; color: var(--green); text-underline-offset: .18em; }
+    h1, h2 { line-height: 1.16; letter-spacing: -.035em; }
+    h1 { margin: .7rem 0 .45rem; font-size: clamp(1.85rem, 6vw, 2.8rem); }
+    header p { margin: .45rem 0; }
+    .controls { display: flex; flex-wrap: wrap; gap: .5rem; margin: 1rem 0 .5rem; }
+    button {
+      font: inherit;
+      background: #fffcf5;
+      color: var(--green);
+      border: 1px solid var(--green);
+      padding: .32rem .8rem;
+      border-radius: .32rem;
+      cursor: pointer;
+    }
+    button[aria-pressed="true"] { background: var(--green); color: white; }
+    button:focus-visible, a:focus-visible { outline: 3px solid #99693b; outline-offset: 3px; }
+    #sample-status { color: #435c55; }
+    article {
+      padding: clamp(1rem, 4vw, 2.15rem);
+      background: #fffcf5;
+      border: 1px solid var(--rule);
+      border-radius: .45rem;
+      margin-bottom: 2.5rem;
+      font: 1.13rem/1.7 Georgia, "Malgun Gothic", serif;
+    }
+    article h2 { margin: 0 0 1.2rem; font-size: clamp(1.6rem, 5vw, 2.45rem); }
+    article p { margin: 0 0 1rem; }
+    article p:last-child { margin-bottom: 0; }
+    #end-marker { scroll-margin-top: 7rem; }
+  </style>
+</head>
+<body>
+  <header lang="ko" translate="no">
+    <a href="https://github.com/dsw1357/local-translator#readme">Local Translator v1.1</a>
+    <h1>번역 예제</h1>
+    <p>영문을 드래그해 선택 영역을 번역하거나, 확장 메뉴에서 페이지 전체를 번역해 보세요. 번역된 단어에 마우스를 올리면 원문을 볼 수 있습니다.</p>
+    <div class="controls" role="group" aria-label="예제 길이">
+      <button type="button" id="short" aria-pressed="true">짧은 예제</button>
+      <button type="button" id="long" aria-pressed="false">장문 예제</button>
+    </div>
+    <p id="sample-status" role="status"></p>
+    <p id="long-help" hidden>장문은 같은 예문을 반복합니다. 기본 40,000자 설정에서 페이지를 번역하고 <strong>남은 페이지 번역</strong>을 누르세요. <a href="#end-marker">뒷부분으로 이동</a>하면 이어서 번역한 문단을 확인할 수 있습니다.</p>
+  </header>
+  <main>
+    <article id="sample">
+      <h2>The Last Train to Alder Bay</h2>
+      <p>Mina reached the little station just before dawn. Rain drummed on the roof, and the empty platform smelled of wet leaves. She had taken this train as a child, but she could no longer remember which side of the carriage looked out over the sea.</p>
+      <p>A porter opened the ticket window. “The train leaves at seven in the morning,” he said. He handed her a ticket, then pointed to the bench under the clock. Someone had left a small blue notebook there.</p>
+      <p>Inside the notebook, she found a sketch of a bridge and a list of stations. Alder Bay was circled twice. Mina slipped the notebook into her coat pocket so that she could return it to the person who had lost it.</p>
+      <p>Her brother arrived with two paper cups of tea. He set them down carefully and looked at the notebook in her hands. “Do you like her bracelets?” he asked, pointing to the sketch of a woman beside the bridge.</p>
+      <p>The station clock stopped for a moment. Then its minute hand moved again, and the two of them heard the train approaching from the valley. Mina gave the porter a wave and walked out to the edge of the platform.</p>
+      <p>When they boarded, Mina found a seat beside the <a href="#end-marker">left window</a>. Beyond the bridge, there were narrow fields and pale roofs. She could just make out a line of sunlight on the water.</p>
+      <p id="end-marker">At the final station, their uncle was waiting with a blue bicycle. Mina returned the notebook to the woman by the gate, and the woman smiled when she saw her drawing.</p>
+    </article>
+  </main>
+  <script>
+    const sample = document.querySelector("#sample");
+    const initial = sample.cloneNode(true);
+    const finalParagraph = initial.querySelector("#end-marker");
+    const short = document.querySelector("#short");
+    const long = document.querySelector("#long");
+    const status = document.querySelector("#sample-status");
+    const formatter = new Intl.NumberFormat("ko-KR");
+
+    function showSample(expanded) {
+      const content = initial.cloneNode(true);
+      if (expanded) {
+        const tail = content.querySelector("#end-marker");
+        const paragraphs = [...initial.querySelectorAll("p")].filter(paragraph => paragraph !== finalParagraph);
+        const count = paragraphs.reduce((length, paragraph) => length + paragraph.textContent.length, 0);
+        const copies = Math.ceil(43_000 / count);
+        const extra = document.createDocumentFragment();
+        for (let index = 0; index < copies; index++) {
+          for (const paragraph of paragraphs) extra.append(paragraph.cloneNode(true));
+        }
+        tail.before(extra);
+      }
+      sample.replaceChildren(...content.childNodes);
+      short.setAttribute("aria-pressed", String(!expanded));
+      long.setAttribute("aria-pressed", String(expanded));
+      document.querySelector("#long-help").hidden = !expanded;
+      const length = [...sample.children].reduce((total, element) => total + element.textContent.length, 0);
+      status.textContent = `영문 예제 · ${formatter.format(length)}자`;
+    }
+
+    short.addEventListener("click", () => showSample(false));
+    long.addEventListener("click", () => showSample(true));
+    showSample(false);
+  </script>
+</body>
+</html>
