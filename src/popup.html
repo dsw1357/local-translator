@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>로컬 번역</title>
+  <link rel="stylesheet" href="popup.css">
+  <script type="module" src="popup.js"></script>
+</head>
+<body>
+  <main>
+    <header>
+      <img src="icons/icon-32.png" width="22" height="22" alt="">
+      <h1>로컬 번역</h1>
+    </header>
+    <form>
+      <section class="box">
+        <div class="box-head">
+          <label for="source">번역할 글</label>
+          <div class="language-controls">
+            <select id="source-language" aria-label="원문 언어" disabled>
+              <option value="auto">자동 감지</option>
+            </select>
+            <button class="secondary pin" type="button" id="pin-source" aria-label="원문 언어 상단 고정" aria-pressed="false" disabled>고정</button>
+          </div>
+        </div>
+        <textarea id="source" dir="auto" maxlength="40000" placeholder="문장을 입력하거나 붙여넣으세요." spellcheck="false"></textarea>
+        <div class="box-actions">
+          <span id="detected"></span>
+          <button type="submit" id="translate" disabled>번역</button>
+        </div>
+      </section>
+      <section class="box result">
+        <div class="box-head">
+          <h2 id="output-label">번역한 글</h2>
+          <div class="language-controls">
+            <select id="target-language" aria-label="번역 언어" disabled>
+              <option value="auto">자동 선택</option>
+            </select>
+            <button class="secondary pin" type="button" id="pin-target" aria-label="번역 언어 상단 고정" aria-pressed="false" disabled>고정</button>
+          </div>
+        </div>
+        <div id="output" role="region" aria-labelledby="output-label" dir="auto" tabindex="0"><span class="placeholder">번역 결과가 여기에 표시됩니다.</span></div>
+        <div class="box-actions">
+          <span id="status" role="status"></span>
+          <button class="secondary" type="button" id="copy" disabled>복사</button>
+        </div>
+      </section>
+    </form>
+    <footer>
+      <button class="plain" type="button" id="translate-page" disabled>현재 페이지 번역</button>
+      <button class="plain" type="button" id="options">옵션</button>
+    </footer>
+  </main>
+</body>
+</html>

@@ -1,13 +1,18 @@
 import { apiKey } from "./config.js";
+import { isSupportedLanguage } from "./languages.js";
 
 const endpoint = "http://127.0.0.1:39781/v1/completions";
 const model = "plamo-3-translate-0.8b";
 
-export async function translate(text, signal, timeout = 120_000) {
+export async function translate(text, signal, { timeout = 120_000, sourceLanguage, targetLanguage = "ko" } = {}) {
+  if (!isSupportedLanguage(targetLanguage) || (sourceLanguage && !isSupportedLanguage(sourceLanguage))) {
+    throw new Error("지원하는 번역 언어를 선택하세요.");
+  }
   const source = text.replace(/<(?=\|plamo:)/gu, "<\u200b");
+  const language = code => code ? "<|plamo:key|>lang<|plamo:val|>" + code : "";
   const prompt = "<|plamo:tag|>dataset<|plamo:msg|>translation" +
-    "<|plamo:tag|>input<|plamo:msg|>" + source +
-    "<|plamo:tag|>output<|plamo:key|>lang<|plamo:val|>ko<|plamo:msg|>";
+    "<|plamo:tag|>input" + language(sourceLanguage) + "<|plamo:msg|>" + source +
+    "<|plamo:tag|>output" + language(targetLanguage) + "<|plamo:msg|>";
   let response;
   try {
     response = await fetch(endpoint, {

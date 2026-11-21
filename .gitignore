@@ -3,5 +3,6 @@
 /.build.lock
 *.gguf
 *.zip
+!/downloads/Local-Translator-*-Windows-x64.zip
 *.log
 .env

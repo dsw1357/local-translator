@@ -1,4 +1,6 @@
 import { translate } from "./engine.js";
+import "./text.js";
+import "./hover.js";
 
 const source = document.querySelector("#source");
 const status = document.querySelector("#status");
@@ -8,47 +10,20 @@ const results = document.querySelector("#results");
 const resume = document.querySelector("#resume");
 const stop = document.querySelector("#stop");
 const copy = document.querySelector("#copy");
-const segmenter = new Intl.Segmenter(undefined, { granularity: "sentence" });
-const MAX_CHUNK = 640;
+const originals = new WeakMap();
+globalThis.localTranslatorHover.previewElements(originals);
 
 let chunks = [];
 const translations = [];
 let controller;
-
-function splitText(text) {
-  const chunks = [];
-  let current = "";
-  for (const paragraph of text.split(/\n{2,}/u)) {
-    const clean = paragraph.trim();
-    if (!clean) continue;
-    if (current) current += "\n\n";
-    for (const { segment } of segmenter.segment(clean)) {
-      if (current.trim() && current.length + segment.length > MAX_CHUNK) {
-        chunks.push(current.trim());
-        current = "";
-      }
-      let start = 0;
-      while (segment.length - start > MAX_CHUNK) {
-        let end = start + MAX_CHUNK;
-        const lastSpace = segment.lastIndexOf(" ", end - 1);
-        if (lastSpace > start + MAX_CHUNK * 0.7) end = lastSpace + 1;
-        if (/[\uD800-\uDBFF]/u.test(segment[end - 1])) end--;
-        const part = segment.slice(start, end).trim();
-        if (part) chunks.push(part);
-        start = end;
-      }
-      current += segment.slice(start);
-    }
-  }
-  if (current.trim()) chunks.push(current.trim());
-  return chunks;
-}
 
 function appendResult(original, translated) {
   const item = document.createElement("article");
   const translation = document.createElement("p");
   translation.lang = "ko";
   translation.textContent = translated;
+  translation.setAttribute("data-original-unit", "");
+  originals.set(translation, { original, targetLanguage: "ko" });
   const details = document.createElement("details");
   const summary = document.createElement("summary");
   summary.textContent = "원문 보기";
@@ -117,7 +92,7 @@ async function initialize() {
     notice.textContent = "텍스트가 길어 처음 약 4만 자만 번역합니다.";
     notice.hidden = false;
   }
-  chunks = splitText(result.text);
+  chunks = globalThis.localTranslatorSentenceParts(result.text).map(part => part.text);
   progress.max = chunks.length;
   progress.hidden = false;
   await run();

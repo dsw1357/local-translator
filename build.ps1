@@ -73,11 +73,11 @@ try {
     $secret = [System.IO.File]::ReadAllText($keyFile).Trim()
     if ($secret -cnotmatch '^[a-f0-9]{64}$') { throw 'The local engine key file is invalid.' }
 
-    Get-ChildItem -LiteralPath (Join-Path $PSScriptRoot 'src') -File |
-        Copy-Item -Destination $target -Force
+    Get-ChildItem -LiteralPath (Join-Path $PSScriptRoot 'src') |
+        Copy-Item -Destination $target -Recurse -Force
     $configuration = 'export const apiKey = "' + $secret + '";'
     [System.IO.File]::WriteAllText((Join-Path $target 'config.js'), $configuration, [System.Text.Encoding]::ASCII)
-    Write-Host "Build complete. Load this directory in both browsers:"
+    Write-Host "Build complete. Open chrome://extensions and load this directory as an unpacked extension:"
     Write-Host $target
 } finally {
     $buildLock.Dispose()

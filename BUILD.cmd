@@ -8,6 +8,6 @@ if errorlevel 1 (
   exit /b 1
 )
 echo.
-echo Next: double-click START.cmd and load the extension folder in both browsers.
+echo Next: double-click START.cmd, open chrome://extensions, and load the extension folder.
 echo See README.md for the browser steps.
 pause

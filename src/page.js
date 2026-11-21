@@ -3,13 +3,14 @@
   globalThis.localTranslationPageLoaded = true;
 
   const MAX_PAGE_TEXT = 40_000;
-  const MAX_CHUNK = 640;
   const EXCLUDED = [
     "script", "style", "noscript", "template", "svg", "textarea", "input", "select",
     "button", "code", "pre", "[hidden]", "[aria-hidden=true]", "[translate=no]"
   ].join(",");
   const changes = new Map();
-  const segmenter = new Intl.Segmenter(undefined, { granularity: "sentence" });
+  const { attachOriginalPreview, textRect, pointerCaret } = globalThis.localTranslatorHover;
+  const sentenceParts = globalThis.localTranslatorSentenceParts;
+  const hidePreview = attachOriginalPreview(locateOriginal);
   let panel;
   let active;
 
@@ -55,6 +56,7 @@
     const stop = makeButton("멈춤", () => active?.abort());
     const restore = makeButton("원문으로 복원", () => {
       active?.abort();
+      hidePreview();
       for (const [node, { original, translated }] of changes) {
         if (node.isConnected && node.data === translated) node.data = original;
       }
@@ -129,52 +131,43 @@
     return { tasks, truncated: false };
   }
 
-  function chunksOf(text) {
-    const chunks = [];
-    let current = "";
-    for (const { segment } of segmenter.segment(text)) {
-      if (current && current.length + segment.length > MAX_CHUNK) {
-        chunks.push(current);
-        current = "";
-      }
-      let offset = 0;
-      while (segment.length - offset > MAX_CHUNK) {
-        let end = offset + MAX_CHUNK;
-        const space = segment.lastIndexOf(" ", end - 1);
-        if (space > offset + MAX_CHUNK / 2) end = space + 1;
-        if (/[\uD800-\uDBFF]/u.test(segment[end - 1])) end--;
-        chunks.push(segment.slice(offset, end));
-        offset = end;
-      }
-      current += segment.slice(offset);
+  function locateOriginal({ clientX, clientY }) {
+    if (changes.size === 0) return;
+    const { node, offset } = pointerCaret(clientX, clientY);
+    const change = changes.get(node);
+    if (!change || node.data !== change.translated) return;
+    const range = document.createRange();
+    for (const unit of change.units) {
+      if (offset < unit.start || offset > unit.end) continue;
+      range.setStart(node, unit.start);
+      range.setEnd(node, unit.end);
+      const rect = textRect(range, clientX, clientY);
+      if (rect) return { ...unit, rect, node, offset, targetLanguage: "ko", languageHint: document.documentElement.lang };
     }
-    if (current) chunks.push(current);
-    return chunks;
   }
 
-  function requestTranslation(text, signal) {
-    signal.throwIfAborted();
-    return new Promise((resolve, reject) => {
-      const port = chrome.runtime.connect({ name: "translate-page-text" });
-      function finish(error, translation) {
-        signal.removeEventListener("abort", abort);
-        port.onDisconnect.removeListener(disconnected);
-        port.disconnect();
-        if (error) reject(error);
-        else resolve(translation);
+  async function translateText(input, signal, cache) {
+    const units = [];
+    let output = "";
+    let lastEnd = 0;
+    for (const unit of sentenceParts(input)) {
+      output += input.slice(lastEnd, unit.start);
+      let translated = unit.text;
+      if (/\p{L}/u.test(unit.text.replace(/\p{Script=Hangul}/gu, ""))) {
+        if (cache.has(unit.text)) {
+          translated = cache.get(unit.text);
+        } else {
+          ({ translated } = await globalThis.localTranslatorRequestPort("translate-page-text", unit.text, signal));
+        }
+        cache.set(unit.text, translated);
       }
-      function abort() { finish(signal.reason); }
-      function disconnected() {
-        void chrome.runtime.lastError;
-        finish(new Error("번역 연결이 끊겼습니다. 우클릭 메뉴를 다시 실행하세요."));
+      if (translated !== unit.text) {
+        units.push({ original: unit.text, start: output.length, end: output.length + translated.length });
       }
-      signal.addEventListener("abort", abort, { once: true });
-      port.onDisconnect.addListener(disconnected);
-      port.onMessage.addListener(response => {
-        finish(response.error ? new Error(response.error) : null, response.translated);
-      });
-      port.postMessage(text);
-    });
+      output += translated;
+      lastEnd = unit.end;
+    }
+    return { output: output + input.slice(lastEnd), units };
   }
 
   async function run(selection) {
@@ -195,20 +188,15 @@
         const { node, original, start, end, input } = tasks[i];
         panel.status.textContent = `${i + 1} / ${tasks.length} 번역 중…`;
         if (!node.isConnected || node.data !== original) continue;
-        let output = cache.get(input);
-        if (!output) {
-          const parts = [];
-          for (const chunk of chunksOf(input)) {
-            if (chunk.trim()) parts.push(await requestTranslation(chunk.trim(), signal));
-          }
-          output = parts.join(" ");
-          cache.set(input, output);
-        }
+        const { output, units } = await translateText(input, signal, cache);
         signal.throwIfAborted();
         if (output && node.isConnected && node.data === original) {
           const translated = original.slice(0, start) + output + original.slice(end);
           if (translated !== original) {
-            changes.set(node, { original, translated });
+            changes.set(node, {
+              original, translated,
+              units: units.map(unit => ({ ...unit, start: start + unit.start, end: start + unit.end }))
+            });
             node.data = translated;
             updateButtons();
           }

@@ -1,10 +1,11 @@
 import { translate } from "./engine.js";
+import { alignOriginalWord } from "./alignment.js";
 
 const SELECTION = "translate-selection";
 const PAGE = "translate-page";
 const DOCUMENTS = ["https://*/*", "http://*/*"];
 const MAX_TEXT = 40_000;
-const ACTION_TITLE = "현재 페이지를 한국어로 번역";
+const ACTION_TITLE = "로컬 번역 열기";
 
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.removeAll(() => {
@@ -27,7 +28,18 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
   void handleMenuClick(info, tab).catch(console.error);
 });
 
-chrome.action.onClicked.addListener(tab => { void startTranslation(tab).catch(console.error); });
+chrome.runtime.onMessage.addListener((message, sender, reply) => {
+  if (message?.type !== "translate-active-tab" || sender.url !== chrome.runtime.getURL("popup.html")) return;
+  translateActiveTab(message.tabId).then(reply, error => reply({ error: error.message }));
+  return true;
+});
+
+async function translateActiveTab(tabId) {
+  if (!Number.isInteger(tabId)) return { error: "번역할 페이지를 선택하세요." };
+  const tab = await chrome.tabs.get(tabId);
+  if (!tab.active) return { error: "번역할 페이지를 다시 선택하세요." };
+  return (await startTranslation(tab)) ?? {};
+}
 
 chrome.tabs.onRemoved.addListener(tabId => {
   void chrome.storage.session.remove(`result:${tabId}`).catch(console.error);
@@ -55,28 +67,34 @@ async function startTranslation(tab, { selection, frameId = 0 } = {}) {
   try {
     const [frame] = await chrome.scripting.executeScript({
       target: { tabId, frameIds: [frameId] },
-      files: ["page.js"]
+      files: ["hover.js", "text.js", "page.js"]
     });
     await chrome.tabs.sendMessage(tabId, {
       type: "translate-in-page", selection: selection !== undefined
     }, { documentId: frame.documentId });
   } catch {
-    await chrome.action.setTitle({
-      tabId, title: "이 문서의 페이지 내 번역을 실행할 수 없습니다."
-    });
+    const error = "이 문서의 페이지 내 번역을 실행할 수 없습니다.";
+    await chrome.action.setTitle({ tabId, title: error });
     await chrome.action.setBadgeText({ tabId, text: "!" });
+    return { error };
   }
 }
 
 chrome.runtime.onConnect.addListener(port => {
-  if (port.name !== "translate-page-text" || !port.sender?.tab || port.sender.id !== chrome.runtime.id) return;
+  const isAlignment = port.name === "align-translation-word";
+  const isPageTranslation = port.name === "translate-page-text" && Boolean(port.sender?.tab);
+  if ((!isAlignment && !isPageTranslation) || port.sender?.id !== chrome.runtime.id) return;
   const controller = new AbortController();
   port.onDisconnect.addListener(() => controller.abort());
-  port.onMessage.addListener(async text => {
-    if (typeof text !== "string" || !text.trim() || text.length > 640) return;
+  port.onMessage.addListener(async input => {
     let response;
     try {
-      response = { translated: await translate(text, controller.signal, 25_000) };
+      if (isAlignment) {
+        response = { alignment: await alignOriginalWord(input, controller.signal) };
+      } else {
+        if (typeof input !== "string" || !input.trim() || input.length > 640) throw new Error("번역할 문장을 읽을 수 없습니다.");
+        response = { translated: await translate(input, controller.signal, { timeout: 25_000 }) };
+      }
     } catch (error) {
       response = { error: error.message };
     }
