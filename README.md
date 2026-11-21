@@ -46,8 +46,10 @@ Chrome 매니페스트의 최소 버전은 116입니다. 최신 데스크톱 Chr
 - **로컬 처리**에 쓰는 엔진 주소는 `127.0.0.1:39781`입니다. 모델 다운로드 후 번역할 때는 인터넷 연결이 필요하지 않습니다.
 - **번역 길이**에서 한 번에 번역할 페이지 글자 수를 40,000~200,000자로 지정할 수 있습니다.
 - **모델 컨텍스트**는 기본 8,192토큰, 16,384토큰, 최대 32,768토큰 중 선택합니다. 기본 엔진은 2슬롯으로 요청당 4,096토큰을 사용하고, 확장 설정은 1슬롯을 사용합니다. 옵션에서 시작 명령을 복사한 뒤 `STOP.cmd`로 엔진을 종료하고 해당 명령으로 실행하세요.
+
 STOP.cmd
 START.cmd -ContextTokens 32768
+
 컨텍스트에는 모델로 보낸 원문과 생성한 번역문이 모두 포함됩니다.
 
 [변경 이력](CHANGELOG.md) · [Chrome 직접 설치 안내](https://developer.chrome.com/docs/extensions/get-started/tutorial/hello-world#load-unpacked) · [PLaMo 모델 및 라이선스](https://huggingface.co/pfnet/plamo-3-translate-0.8b-GGUF) · [llama.cpp Vulkan 배포본](https://github.com/ggml-org/llama.cpp/releases/tag/b12246)
